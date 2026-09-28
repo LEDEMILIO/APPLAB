@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>APP LAB: Criando e Melhorando Aplicativos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #121826;
+      --card-bg: rgba(27, 38, 59, 0.9);
+      --primary-blue: #00d2ff;
+      --accent-purple: #9d4edd;
+      --accent-green: #00e676;
+      --accent-yellow: #ffca28;
+      --accent-pink: #ff4081;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 15% 15%, rgba(0, 210, 255, 0.12) 0%, transparent 45%),
+        radial-gradient(circle at 85% 85%, rgba(157, 78, 221, 0.12) 0%, transparent 45%);
+      color: var(--text-main);
+      padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .main-card {
+      max-width: 900px;
+      width: 100%;
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      border: 2px solid rgba(0, 210, 255, 0.3);
+      border-radius: 24px;
+      padding: 30px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+    }
+
+    /* BARRA SUPERIOR DE PROGRESSO */
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 12px 20px;
+      margin-bottom: 25px;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+
+    .team-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .team-icon {
+      font-size: 24px;
+      background: rgba(0, 210, 255, 0.15);
+      padding: 8px;
+      border-radius: 50%;
+    }
+
+    .progress-container {
+      flex: 1;
+      min-width: 180px;
+    }
+
+    .progress-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--primary-blue);
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 20%;
+      background: linear-gradient(90deg, var(--primary-blue), var(--accent-green));
+      transition: width 0.4s ease;
+    }
+
+    .phase-badge {
+      background: rgba(255, 202, 40, 0.15);
+      border: 1px solid var(--accent-yellow);
+      color: var(--accent-yellow);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    /* CABEÇALHO DA PÁGINA */
+    header { text-align: center; margin-bottom: 25px; }
+
+    header h1 {
+      font-family: 'Fredoka', sans-serif;
+      font-size: 28px;
+      color: #fff;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    header p { color: var(--text-muted); font-size: 14px; }
+
+    /* ETAPAS DAS ETAPAS DE NAVEGAÇÃO */
+    .steps-nav {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 25px;
+      gap: 8px;
+    }
+
+    .step-tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px 5px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-muted);
+      transition: all 0.3s;
+    }
+
+    .step-tab.active {
+      background: rgba(0, 210, 255, 0.12);
+      border-color: var(--primary-blue);
+      color: var(--primary-blue);
+    }
+
+    .step-tab.completed {
+      background: rgba(0, 230, 118, 0.1);
+      border-color: var(--accent-green);
+      color: var(--accent-green);
+    }
+
+    /* PAINÉIS DE FORMULÁRIO */
+    .step-panel { display: none; animation: fadeIn 0.3s ease-in-out; }
+    .step-panel.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-group { margin-bottom: 18px; }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--primary-blue);
+    }
+
+    input[type="text"], textarea, select {
+      width: 100%;
+      padding: 12px 14px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(0, 210, 255, 0.25);
+      border-radius: 10px;
+      color: #fff;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.3s;
+    }
+
+    input[type="text"]:focus, textarea:focus, select:focus {
+      border-color: var(--primary-blue);
+      box-shadow: 0 0 12px rgba(0, 210, 255, 0.3);
+    }
+
+    textarea { resize: vertical; min-height: 80px; }
+
+    /* CAIXAS DIDÁTICAS DE EXPLICAÇÃO */
+    .didactic-box {
+      background: rgba(157, 78, 221, 0.12);
+      border-left: 4px solid var(--accent-purple);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #e2d9f3;
+    }
+
+    .didactic-box strong { color: var(--accent-yellow); }
+
+    /* SIMULADOR DO CELULAR */
+    .builder-area {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .builder-inputs { flex: 1; min-width: 270px; }
+    .phone-preview { flex: 1; min-width: 270px; display: flex; justify-content: center; }
+
+    .phone-frame {
+      width: 240px;
+      height: 450px;
+      background: #0f172a;
+      border: 4px solid #334155;
+      border-radius: 32px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    .phone-top-bar {
+      width: 90px;
+      height: 16px;
+      background: #334155;
+      margin: 0 auto;
+      border-bottom-left-radius: 8px;
+      border-bottom-right-radius: 8px;
+    }
+
+    .phone-screen {
+      flex: 1;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+      background: #1e293b;
+    }
+
+    .phone-element-box {
+      padding: 8px 12px;
+      background: rgba(0, 210, 255, 0.15);
+      border: 1px dashed var(--primary-blue);
+      border-radius: 8px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* BOTOES DE NAVEGAÇÃO */
+    .btn-group {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 25px;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-next {
+      background: var(--primary-blue);
+      color: #0f172a;
+    }
+
+    .btn-next:hover {
+      background: #38bdf8;
+      transform: translateY(-2px);
+    }
+
+    .btn-prev {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+    }
+
+    .btn-prev:hover { background: rgba(255, 255, 255, 0.2); }
+
+    .btn-add {
+      background: #2563eb;
+      color: white;
+      width: 100%;
+      justify-content: center;
+    }
+
+    .btn-clear {
+      background: rgba(239, 68, 68, 0.2);
+      border: 1px solid #ef4444;
+      color: #ef4444;
+      width: 100%;
+      margin-top: 8px;
+      justify-content: center;
+    }
+
+    .btn-send {
+      background: var(--accent-green);
+      color: #052e16;
+      font-size: 15px;
+    }
+
+    .btn-send:hover { transform: scale(1.02); }
+
+    /* ESTILO DE IMPRESSÃO / PDF */
+    @media print {
+      body { background: white !important; color: black !important; }
+      .main-card { border: none !important; box-shadow: none !important; backdrop-filter: none !important; width: 100% !important; max-width: 100% !important; }
+      .progress-header, .steps-nav, .btn-group, .builder-inputs, .phone-top-bar { display: none !important; }
+      .step-panel { display: block !important; margin-bottom: 20px; page-break-inside: avoid; }
+      .phone-frame { border: 2px solid #000 !important; height: auto !important; min-height: 220px; background: white !important; }
+      .phone-element-box { border: 1px solid #000 !important; color: #000 !important; background: #f1f5f9 !important; }
+      label { color: #000 !important; }
+      input, textarea { border: 1px solid #ccc !important; color: #000 !important; background: white !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="main-card">
+  
+  <!-- BARRA DE PROGRESSO DA DUPLA -->
+  <div class="progress-header">
+    <div class="team-info">
+      <div class="team-icon">👥</div>
+      <div>
+        <div style="font-weight: 800; font-size: 14px;" id="displayTeam">DUPLA DE ALUNOS</div>
+        <div style="font-size: 11px; color: var(--text-muted);" id="displayClass">7º ANO</div>
+      </div>
+    </div>
+
+    <div class="progress-container">
+      <div class="progress-title">
+        <span>PROGRESSO</span>
+        <span id="progressText">Passo 1 de 5</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progressBar"></div>
+      </div>
+    </div>
+
+    <div class="phase-badge" id="phaseBadge">1. Identificação</div>
+  </div>
+
+  <header>
+    <h1>APP LAB — Fase 2: Reformulação</h1>
+    <p>Análise, melhoria e redesign de aplicativos</p>
+  </header>
+
+  <!-- LISTA DE PASSO A PASSO -->
+  <div class="steps-nav">
+    <div class="step-tab active" id="st-1">1. Dupla</div>
+    <div class="step-tab" id="st-2">2. Problemas</div>
+    <div class="step-tab" id="st-3">3. Passo a Passo</div>
+    <div class="step-tab" id="st-4">4. Nova Tela</div>
+    <div class="step-tab" id="st-5">5. Enviar</div>
+  </div>
+
+  <form id="appLabForm">
+    
+    <!-- PASSO 1: IDENTIFICAÇÃO -->
+    <div class="step-panel active" id="step-1">
+      <div class="section-title">📋 Passo 1: Quem é a dupla?</div>
+      
+      <div class="form-group">
+        <label>Nome do Aluno 1:</label>
+        <input type="text" id="aluno1" required placeholder="Digite o nome completo" oninput="updateTeam()">
+      </div>
+      <div class="form-group">
+        <label>Nome do Aluno 2:</label>
+        <input type="text" id="aluno2" required placeholder="Digite o nome completo" oninput="updateTeam()">
+      </div>
+      <div class="form-group">
+        <label>Turma:</label>
+        <input type="text" id="turma" required placeholder="Exemplo: 7º Ano B" oninput="updateTeam()">
+      </div>
+      <div class="form-group">
+        <label>Nome do Aplicativo que vocês receberam para analisar:</label>
+        <input type="text" id="nomeAppOriginal" required placeholder="Nome do aplicativo original">
+      </div>
+    </div>
+
+    <!-- PASSO 2: PROBLEMAS ENCONTRADOS -->
+    <div class="step-panel" id="step-2">
+      <div class="section-title">🔍 Passo 2: O que precisa ser melhorado?</div>
+      
+      <div class="form-group">
+        <label>O que o aplicativo original prometia fazer?</label>
+        <textarea id="objetivoOriginal" placeholder="Explique para que servia o app original..."></textarea>
+      </div>
+
+      <div class="didactic-box">
+        💡 <strong>Dica de Análise:</strong> Pensem em coisas que deixavam o aplicativo antigo difícil, confuso ou chato de usar.
+      </div>
+
+      <div class="form-group">
+        <label>Problema 1 e por que ele atrapalha o usuário:</label>
+        <textarea id="prob1" placeholder="Exemplo: O botão de confirmar é pequeno demais e difícil de clicar..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Problema 2 e por que ele atrapalha o usuário:</label>
+        <textarea id="prob2" placeholder="Exemplo: A tela inicial tem muito texto e deixa a pessoa perdida..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Problema 3 e por que ele atrapalha o usuário:</label>
+        <textarea id="prob3" placeholder="Exemplo: Faltava uma opção para voltar para o menu principal..."></textarea>
+      </div>
+    </div>
+
+    <!-- PASSO 3: FLUXOGRAMA (PASSO A PASSO DIDÁTICO) -->
+    <div class="step-panel" id="step-3">
+      <div class="section-title">🧭 Passo 3: O Fluxograma da Nova Versão</div>
+      
+      <div class="didactic-box">
+        📖 <strong>O que é um Fluxograma?</strong><br>
+        É simplesmente a <strong>sequência de passos</strong> que alguém faz para usar o aplicativo do início ao fim.<br><br>
+        <em>Exemplo do dia a dia (Escovar os dentes):</em><br>
+        1. Pegar a escova ➔ 2. Colocar pasta ➔ 3. Escovar os dentes ➔ 4. Enxaguar a boca.
+      </div>
+
+      <p style="margin-bottom: 12px; font-weight: 700; color: #fff;">Escrevam os 4 passos da nova versão do seu aplicativo:</p>
+
+      <div class="form-group">
+        <label>Passo 1 (Como tudo começa):</label>
+        <input type="text" id="fluxo1" placeholder="Exemplo: O usuário abre o app e clica em 'Entrar'">
+      </div>
+      <div class="form-group">
+        <label>Passo 2 (Ação principal do usuário):</label>
+        <input type="text" id="fluxo2" placeholder="Exemplo: Digita o que está procurando na caixa de pesquisa">
+      </div>
+      <div class="form-group">
+        <label>Passo 3 (Escolha ou decisão):</label>
+        <input type="text" id="fluxo3" placeholder="Exemplo: Escolhe uma das opções mostradas na tela">
+      </div>
+      <div class="form-group">
+        <label>Passo 4 (Final/Resultado esperado):</label>
+        <input type="text" id="fluxo4" placeholder="Exemplo: Recebe a mensagem de confirmação na tela">
+      </div>
+    </div>
+
+    <!-- PASSO 4: DESENHO DA TELA -->
+    <div class="step-panel" id="step-4">
+      <div class="section-title">📱 Passo 4: Monte a Nova Tela do Celular</div>
+      
+      <div class="didactic-box">
+        🎨 <strong>Como funciona:</strong> Digite o texto do elemento, escolha o tipo dele e clique em <strong>"Adicionar na Tela"</strong> para ver como fica no celular ao lado!
+      </div>
+
+      <div class="builder-area">
+        <div class="builder-inputs">
+          <div class="form-group">
+            <label>Texto que vai aparecer no elemento:</label>
+            <input type="text" id="elementText" placeholder="Ex: Botão Iniciar / Digite seu nome">
+          </div>
+          <div class="form-group">
+            <label>Tipo de elemento:</label>
+            <select id="elementType">
+              <option value="Botão">Botão (Clicável)</option>
+              <option value="Título">Título / Cabeçalho</option>
+              <option value="Campo de Texto">Caixa para Digitar</option>
+              <option value="Imagem">Espaço de Imagem/Foto</option>
+            </select>
+          </div>
+          
+          <button type="button" class="btn btn-add" onclick="adicionarElemento()">
+            ➕ Adicionar na Tela do Celular
+          </button>
+          
+          <button type="button" class="btn btn-clear" onclick="limparTela()">
+            🗑️ Limpar Tela do Celular
+          </button>
+        </div>
+
+        <div class="phone-preview">
+          <div class="phone-frame">
+            <div class="phone-top-bar"></div>
+            <div class="phone-screen" id="phoneScreen">
+              <div class="phone-element-box">[Tela Inicial] Meu Novo App</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PASSO 5: FINALIZAR E ENVIAR -->
+    <div class="step-panel" id="step-5">
+      <div class="section-title">🎉 Passo 5: Tudo Pronto!</div>
+      
+      <div class="didactic-box" style="border-left-color: var(--accent-green); background: rgba(0, 230, 118, 0.1);">
+        ✅ Vocês concluíram todas as etapas da reformulação do aplicativo!<br>
+        Agora é só enviar as respostas para a planilha do professor ou salvar em PDF.
+      </div>
+
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px;">
+        <button type="button" class="btn btn-send" onclick="enviarParaGoogleSheets()">
+          📤 Enviar Respostas para o Professor
+        </button>
+        <button type="button" class="btn btn-prev" onclick="window.print()">
+          🖨️ Salvar em PDF / Imprimir
+        </button>
+      </div>
+
+      <div id="statusMensagem" style="margin-top: 20px; font-weight: 700; font-size: 14px;"></div>
+    </div>
+
+    <!-- BOTOES DE NAVEGAÇÃO ENTRE PASSOS -->
+    <div class="btn-group">
+      <button type="button" class="btn btn-prev" id="btnPrev" onclick="mudarPasso(-1)" style="display:none;">
+        ⬅️ Passo Anterior
+      </button>
+      <button type="button" class="btn btn-next" id="btnNext" onclick="mudarPasso(1)">
+        Próximo Passo ➡️
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<script>
+  let currentStep = 1;
+  let elementosAdicionados = ["[Tela Inicial] Meu Novo App"];
+
+  function updateTeam() {
+    const a1 = document.getElementById('aluno1').value || 'Aluno 1';
+    const a2 = document.getElementById('aluno2').value || 'Aluno 2';
+    const turma = document.getElementById('turma').value || '7º ANO';
+
+    document.getElementById('displayTeam').innerText = `${a1} e ${a2}`;
+    document.getElementById('displayClass').innerText = turma;
+  }
+
+  function updateProgressBar() {
+    const percentages = [20, 40, 60, 80, 100];
+    const titles = ["1. Identificação", "2. Problemas", "3. Passo a Passo", "4. Nova Tela", "5. Enviar"];
+    
+    document.getElementById('progressBar').style.width = `${percentages[currentStep - 1]}%`;
+    document.getElementById('progressText').innerText = `Passo ${currentStep} de 5`;
+    document.getElementById('phaseBadge').innerText = titles[currentStep - 1];
+  }
+
+  function atualizarInterface() {
+    document.querySelectorAll('.step-panel').forEach((el, idx) => {
+      el.classList.toggle('active', idx + 1 === currentStep);
+    });
+
+    document.querySelectorAll('.step-tab').forEach((el, idx) => {
+      el.classList.remove('active', 'completed');
+      if (idx + 1 === currentStep) {
+        el.classList.add('active');
+      } else if (idx + 1 < currentStep) {
+        el.classList.add('completed');
+      }
+    });
+
+    document.getElementById('btnPrev').style.display = currentStep === 1 ? 'none' : 'inline-flex';
+    document.getElementById('btnNext').style.display = currentStep === 5 ? 'none' : 'inline-flex';
+    
+    updateProgressBar();
+  }
+
+  function mudarPasso(delta) {
+    if (delta === 1 && !validarPassoAtual()) return;
+    currentStep = Math.max(1, Math.min(5, currentStep + delta));
+    atualizarInterface();
+  }
+
+  function validarPassoAtual() {
+    if (currentStep === 1) {
+      const a1 = document.getElementById('aluno1').value;
+      const a2 = document.getElementById('aluno2').value;
+      const t = document.getElementById('turma').value;
+      if (!a1 || !a2 || !t) {
+        alert('Por favor, preencha o nome dos dois alunos e a turma antes de continuar!');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function adicionarElemento() {
+    const texto = document.getElementById('elementText').value || 'Novo Item';
+    const tipo = document.getElementById('elementType').value;
+    const screen = document.getElementById('phoneScreen');
+
+    const itemFormatado = `[${tipo}] ${texto}`;
+    elementosAdicionados.push(itemFormatado);
+
+    const el = document.createElement('div');
+    el.className = 'phone-element-box';
+    el.innerText = itemFormatado;
+    screen.appendChild(el);
+
+    document.getElementById('elementText').value = '';
+  }
+
+  function limparTela() {
+    elementosAdicionados = ["[Tela Inicial] Meu Novo App"];
+    document.getElementById('phoneScreen').innerHTML = '<div class="phone-element-box">[Tela Inicial] Meu Novo App</div>';
+  }
+
+  // ENVIO AUTOMÁTICO PARA A PLANILHA VIA APPS SCRIPT
+  function enviarParaGoogleSheets() {
+    const URL_DO_SEU_APPS_SCRIPT = "https://script.google.com/macros/s/AKfycbwXu-phiutk30h7ILatdWXEEtNLiUSH475ewD5UMyKd8F7KC-Q3FzXehisIK-YcjtSDHw/exec";
+
+    const statusDiv = document.getElementById('statusMensagem');
+    statusDiv.innerText = "⏳ Enviando suas respostas para o professor... Por favor, aguarde!";
+    statusDiv.style.color = "#00d2ff";
+
+    const payload = {
+      alunos: document.getElementById('aluno1').value + ' e ' + document.getElementById('aluno2').value,
+      turma: document.getElementById('turma').value,
+      appOriginal: document.getElementById('nomeAppOriginal').value,
+      objetivoOriginal: document.getElementById('objetivoOriginal').value,
+      problemas: `Problema 1: ${document.getElementById('prob1').value} | Problema 2: ${document.getElementById('prob2').value} | Problema 3: ${document.getElementById('prob3').value}`,
+      fluxograma: `Passo 1: ${document.getElementById('fluxo1').value} ➔ Passo 2: ${document.getElementById('fluxo2').value} ➔ Passo 3: ${document.getElementById('fluxo3').value} ➔ Passo 4: ${document.getElementById('fluxo4').value}`,
+      elementosTela: elementosAdicionados.join(' ; ')
+    };
+
+    fetch(URL_DO_SEU_APPS_SCRIPT, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(() => {
+      statusDiv.innerText = "✅ Sucesso! Suas respostas foram salvas na planilha do professor.";
+      statusDiv.style.color = "#00e676";
+    }).catch(err => {
+      statusDiv.innerText = "❌ Houve um problema ao enviar. Use o botão 'Salvar em PDF' para entregar o trabalho.";
+      statusDiv.style.color = "#ff4081";
+    });
+  }
+</script>
+
+</body>
+</html>
