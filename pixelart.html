@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Missão Pixel - Pintura por Código</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Fredoka', 'Inter', sans-serif;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%);
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .pixel-grid {
+            display: grid;
+            gap: 1px;
+            background-color: #cbd5e1;
+            padding: 2px;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .pixel-cell {
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(8px, 1.4vw, 13px);
+            font-weight: 700;
+            background-color: #ffffff;
+            cursor: pointer;
+            transition: transform 0.05s ease, background-color 0.15s ease;
+        }
+
+        .pixel-cell:hover {
+            filter: brightness(0.92);
+        }
+
+        .pixel-cell.painted {
+            font-size: 0px;
+        }
+
+        .pixel-cell.error-shake {
+            animation: shake 0.3s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-3px); }
+            40%, 80% { transform: translateX(3px); }
+        }
+
+        .color-badge {
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .color-badge.selected {
+            transform: scale(1.15);
+            box-shadow: 0 0 0 4px #818cf8;
+            z-index: 10;
+        }
+
+        .hint-highlight {
+            animation: pulse-hint 0.8s infinite alternate;
+        }
+
+        @keyframes pulse-hint {
+            from { outline: 3px solid #ef4444; box-shadow: 0 0 8px #ef4444; }
+            to { outline: 4px solid #f59e0b; box-shadow: 0 0 16px #f59e0b; }
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800">
+
+    <!-- Header Navigation Bar -->
+    <header class="bg-white/95 backdrop-blur-md border-b-4 border-indigo-200 px-4 py-3 sticky top-0 z-30 shadow-md">
+        <div class="max-w-5xl mx-auto flex items-center justify-between gap-2">
+            <!-- Brand & Title -->
+            <div class="flex items-center gap-3 cursor-pointer" onclick="goToMenu()">
+                <div class="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white text-xl md:text-2xl shadow-lg transform hover:scale-105 transition-transform">
+                    <i class="fa-solid fa-user-secret"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold tracking-wide text-indigo-950 leading-tight">Missão Pixel</h1>
+                    <p class="text-xs md:text-sm font-semibold text-indigo-500 hidden sm:block">Pintura por Código • Decodificadores</p>
+                </div>
+            </div>
+
+            <!-- Agent Badge Display -->
+            <div id="agent-badge" class="hidden flex items-center gap-2 bg-indigo-50 border-2 border-indigo-200 px-3 py-1.5 rounded-2xl">
+                <div class="w-7 h-7 bg-indigo-500 text-white rounded-full flex items-center justify-center text-xs">
+                    <i class="fa-solid fa-id-badge"></i>
+                </div>
+                <div class="text-left text-xs">
+                    <p id="badge-names" class="font-bold text-indigo-950 truncate max-w-[120px] sm:max-w-[180px]">Dupla</p>
+                    <p id="badge-class" class="font-bold text-indigo-500 text-[10px]">3º Ano A</p>
+                </div>
+            </div>
+
+            <!-- Header Control Buttons -->
+            <div id="game-controls" class="hidden flex items-center gap-2">
+                <button onclick="toggleAudio()" id="btn-audio" class="p-2 md:px-3 md:py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm flex items-center gap-2 border-2 border-slate-300 transition-all">
+                    <i id="audio-icon" class="fa-solid fa-volume-high text-indigo-600"></i>
+                    <span class="hidden md:inline">Som</span>
+                </button>
+
+                <button onclick="giveHint()" class="px-3 py-2 rounded-xl bg-amber-400 hover:bg-amber-500 text-amber-950 font-bold text-sm flex items-center gap-2 border-b-4 border-amber-600 active:translate-y-0.5 shadow-md transition-all">
+                    <i class="fa-solid fa-lightbulb text-amber-900"></i>
+                    <span class="hidden sm:inline">Dica</span>
+                </button>
+
+                <button onclick="goToMenu()" class="px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-sm flex items-center gap-2 border-b-4 border-rose-700 active:translate-y-0.5 shadow-md transition-all">
+                    <i class="fa-solid fa-house"></i>
+                    <span class="hidden sm:inline">Menu</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game Container -->
+    <main class="flex-1 max-w-5xl w-full mx-auto p-3 sm:p-6 flex flex-col justify-center">
+
+        <!-- VIEW 1: REGISTRATION & LEVEL SELECTION MENU -->
+        <section id="menu-view" class="flex flex-col items-center justify-center py-4 text-center">
+            <div class="bg-white/95 backdrop-blur-lg rounded-3xl p-6 md:p-8 shadow-2xl border-4 border-white max-w-2xl w-full">
+                
+                <!-- Didactic Story Briefing -->
+                <div class="bg-indigo-50 border-2 border-indigo-200 rounded-2xl p-4 text-left mb-6">
+                    <div class="flex items-center gap-2 text-indigo-900 font-bold text-base mb-1">
+                        <i class="fa-solid fa-circle-info text-indigo-600"></i>
+                        <span>Atenção, Agentes Decodificadores!</span>
+                    </div>
+                    <p class="text-xs md:text-sm text-indigo-950 leading-relaxed">
+                        Os computadores guardam imagens em pequenos quadradinhos chamados <strong>pixels</strong>. Cada número representa uma cor. Escolha uma missão, pinte os pixels corretos e descubra qual <strong>imagem misteriosa</strong> está escondida!
+                    </p>
+                </div>
+
+                <!-- Registration Form -->
+                <form id="registration-form" onsubmit="event.preventDefault(); startMission();" class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 mb-6 text-left">
+                    <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-pen-to-square text-indigo-500"></i> Identificação dos Agentes
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-3">
+                        <!-- Names Input -->
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Nome da Dupla / Integrantes *</label>
+                            <input type="text" id="input-names" placeholder="Ex: Ana e Lucas" required oninput="validateRegistration()"
+                                class="w-full px-3 py-2 bg-white border-2 border-slate-300 focus:border-indigo-500 rounded-xl text-sm font-semibold outline-none transition-colors">
+                        </div>
+
+                        <!-- Class Selection Radio Buttons -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Turma *</label>
+                            <div class="flex items-center gap-2 h-10">
+                                <label class="flex-1 border-2 border-slate-300 bg-white rounded-xl px-2 py-1.5 flex items-center justify-center gap-1 cursor-pointer font-bold text-xs hover:border-indigo-400 transition-colors">
+                                    <input type="radio" name="class-select" value="3º Ano A" checked onchange="validateRegistration()" class="accent-indigo-600">
+                                    3º A
+                                </label>
+                                <label class="flex-1 border-2 border-slate-300 bg-white rounded-xl px-2 py-1.5 flex items-center justify-center gap-1 cursor-pointer font-bold text-xs hover:border-indigo-400 transition-colors">
+                                    <input type="radio" name="class-select" value="3º Ano B" onchange="validateRegistration()" class="accent-indigo-600">
+                                    3º B
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Secret Mission Selection Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <!-- Mission 1: Robot Codename -->
+                    <div id="card-mission-1" onclick="selectLevelCard(1)" class="group bg-gradient-to-b from-sky-50 to-blue-100 border-4 border-sky-300 hover:border-sky-500 rounded-2xl p-5 cursor-pointer shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all flex flex-col items-center relative">
+                        <div class="w-20 h-20 bg-sky-400/20 rounded-2xl flex items-center justify-center text-4xl text-sky-600 mb-3 group-hover:scale-110 transition-transform">
+                            🤖
+                        </div>
+                        <span class="bg-sky-500 text-white font-bold text-xs px-3 py-0.5 rounded-full mb-1">Missão 1</span>
+                        <h4 class="text-lg font-bold text-sky-950 mb-1">Código do Futuro</h4>
+                        <p class="text-xs text-sky-700 font-semibold mb-4">Matriz 22 × 24 • 7 Cores</p>
+                        <button type="button" id="btn-mission-1" class="w-full py-2 bg-sky-500 text-white font-bold rounded-xl border-b-4 border-sky-700 shadow flex items-center justify-center gap-2 opacity-60">
+                            🔒 Iniciar Missão
+                        </button>
+                    </div>
+
+                    <!-- Mission 2: Spidey Codename -->
+                    <div id="card-mission-2" onclick="selectLevelCard(2)" class="group bg-gradient-to-b from-rose-50 to-red-100 border-4 border-rose-300 hover:border-rose-500 rounded-2xl p-5 cursor-pointer shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all flex flex-col items-center relative">
+                        <div class="w-20 h-20 bg-rose-400/20 rounded-2xl flex items-center justify-center text-4xl text-rose-600 mb-3 group-hover:scale-110 transition-transform">
+                            🕷️
+                        </div>
+                        <span class="bg-rose-500 text-white font-bold text-xs px-3 py-0.5 rounded-full mb-1">Missão 2</span>
+                        <h4 class="text-lg font-bold text-rose-950 mb-1">O Herói Secreto</h4>
+                        <p class="text-xs text-rose-700 font-semibold mb-4">Matriz 19 × 20 • 5 Cores</p>
+                        <button type="button" id="btn-mission-2" class="w-full py-2 bg-rose-500 text-white font-bold rounded-xl border-b-4 border-rose-700 shadow flex items-center justify-center gap-2 opacity-60">
+                            🔒 Iniciar Missão
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: GAMEPLAY WORKSPACE -->
+        <section id="game-view" class="hidden flex flex-col gap-4 items-center">
+            
+            <!-- Progress Bar & Stage Title Card -->
+            <div class="w-full bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-lg border-2 border-white flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <span id="level-avatar" class="text-3xl">🤖</span>
+                    <div>
+                        <h2 id="level-title" class="text-lg font-bold text-slate-800 leading-tight">Código do Futuro</h2>
+                        <p id="level-sub" class="text-xs text-indigo-600 font-semibold">Decodifique os pixels para revelar o mistério!</p>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="w-full sm:w-64 flex flex-col gap-1">
+                    <div class="flex justify-between text-xs font-bold text-slate-700">
+                        <span>Progresso</span>
+                        <span id="progress-text" class="text-indigo-600">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-4 rounded-full overflow-hidden p-0.5 border border-slate-300">
+                        <div id="progress-bar" class="bg-gradient-to-r from-emerald-400 to-teal-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workspace Layout: Palette Left/Top + Grid Canvas -->
+            <div class="w-full flex flex-col lg:flex-row gap-4 items-center lg:items-start justify-center">
+                
+                <!-- Color Palette Toolbar -->
+                <div class="w-full lg:w-auto bg-white/95 backdrop-blur-md rounded-2xl p-4 shadow-lg border-2 border-white flex flex-col gap-3">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider text-center lg:text-left">
+                        <i class="fa-solid fa-palette text-indigo-500 mr-1"></i> Paleta de Cores
+                    </span>
+                    <div id="palette-container" class="flex flex-wrap lg:flex-col gap-2.5 justify-center">
+                        <!-- Palette Items rendered dynamically -->
+                    </div>
+                </div>
+
+                <!-- Grid Canvas Container -->
+                <div class="bg-white/95 backdrop-blur-md p-3 sm:p-5 rounded-2xl shadow-xl border-2 border-white flex flex-col items-center overflow-auto max-w-full">
+                    <div id="pixel-grid" class="pixel-grid">
+                        <!-- Grid cells generated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- VICTORY MODAL WITH CERTIFICATE -->
+    <div id="victory-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border-4 border-emerald-400 text-center transform animate-bounce-short">
+            <div class="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center text-4xl text-emerald-600 mx-auto mb-3 border-4 border-emerald-200 shadow-inner">
+                🏆
+            </div>
+            <span class="bg-emerald-100 text-emerald-800 font-extrabold text-xs px-3 py-1 rounded-full uppercase tracking-wider">MISTÉRIO REVELADO!</span>
+            
+            <h3 class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-2 mb-1">Parabéns, Agentes!</h3>
+            
+            <!-- Agent Certificate Box -->
+            <div class="bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-3 my-4 text-left">
+                <p class="text-xs text-emerald-700 font-semibold">Certificado de Decodificação:</p>
+                <p id="cert-names" class="text-base font-bold text-emerald-950">Dupla: -</p>
+                <p id="cert-class" class="text-xs font-bold text-emerald-600">Turma: 3º Ano A</p>
+                <div class="mt-2 pt-2 border-t border-emerald-200 flex items-center justify-between text-xs font-bold text-slate-700">
+                    <span>Desenho Revelado:</span>
+                    <span id="cert-revealed-title" class="text-indigo-600 font-extrabold text-sm">O Robô Amigo!</span>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-center gap-2 text-amber-400 text-3xl mb-5">
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <button onclick="restartCurrentLevel()" class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-2xl border-b-4 border-emerald-700 shadow-lg flex items-center justify-center gap-2 active:translate-y-0.5 transition-all">
+                    <i class="fa-solid fa-rotate-right"></i> Pintar Novamente
+                </button>
+                <button onclick="goToMenu()" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl border-b-4 border-indigo-800 shadow-lg flex items-center justify-center gap-2 active:translate-y-0.5 transition-all">
+                    <i class="fa-solid fa-list"></i> Escolher Outra Missão
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Web Audio Synth State
+        let audioEnabled = true;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            if (type === 'paint') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(440, now);
+                osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.08);
+                osc.start(now);
+                osc.stop(now + 0.08);
+            } else if (type === 'error') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.linearRampToValueAtTime(100, now + 0.15);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.15);
+                osc.start(now);
+                osc.stop(now + 0.15);
+            } else if (type === 'victory') {
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, idx) => {
+                    const noteOsc = audioCtx.createOscillator();
+                    const noteGain = audioCtx.createGain();
+                    noteOsc.type = 'triangle';
+                    noteOsc.frequency.setValueAtTime(freq, now + idx * 0.1);
+                    noteGain.gain.setValueAtTime(0.2, now + idx * 0.1);
+                    noteGain.gain.linearRampToValueAtTime(0, now + idx * 0.1 + 0.25);
+                    noteOsc.connect(noteGain);
+                    noteGain.connect(audioCtx.destination);
+                    noteOsc.start(now + idx * 0.1);
+                    noteOsc.stop(now + idx * 0.1 + 0.25);
+                });
+            }
+        }
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            const icon = document.getElementById('audio-icon');
+            icon.className = audioEnabled ? 'fa-solid fa-volume-high text-indigo-600' : 'fa-solid fa-volume-xmark text-slate-400';
+        }
+
+        // COLOR PALETTE SCHEMES
+        const PALETTES = {
+            level1: {
+                0: { name: 'Branco', hex: '#ffffff', textColor: '#94a3b8' },
+                1: { name: 'Amarelo', hex: '#eab308', textColor: '#ffffff' },
+                2: { name: 'Azul Claro', hex: '#38bdf8', textColor: '#ffffff' },
+                3: { name: 'Azul Escuro', hex: '#1d4ed8', textColor: '#ffffff' },
+                4: { name: 'Preto', hex: '#1e293b', textColor: '#ffffff' },
+                5: { name: 'Laranja', hex: '#f97316', textColor: '#ffffff' },
+                6: { name: 'Verde Escuro', hex: '#15803d', textColor: '#ffffff' },
+                7: { name: 'Verde Claro', hex: '#84cc16', textColor: '#ffffff' }
+            },
+            level2: {
+                0: { name: 'Branco', hex: '#ffffff', textColor: '#94a3b8' },
+                1: { name: 'Azul Claro', hex: '#38bdf8', textColor: '#ffffff' },
+                2: { name: 'Azul Escuro', hex: '#1d4ed8', textColor: '#ffffff' },
+                3: { name: 'Preto', hex: '#0f172a', textColor: '#ffffff' },
+                4: { name: 'Vermelho', hex: '#ef4444', textColor: '#ffffff' },
+                5: { name: 'Laranja', hex: '#f97316', textColor: '#ffffff' }
+            }
+        };
+
+        // REVEALED TITLES AT 100%
+        const REVEALED_NAMES = {
+            1: "O Robô Amigo! 🤖",
+            2: "O Homem-Aranha! 🕷️"
+        };
+
+        // LEVEL MATRIX DATA
+        const LEVEL_1_MATRIX = [
+            [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+            [2,2,2,2,2,2,2,2,2,2,3,3,3,2,2,3,3,2,2,2,2,2],
+            [2,2,2,2,2,2,2,2,2,2,3,2,2,2,3,2,2,2,2,2,2,2],
+            [2,2,2,0,0,0,2,2,5,5,5,5,5,5,5,5,5,2,2,2,2,2],
+            [2,2,0,0,0,0,0,2,5,5,5,5,5,5,5,5,5,2,2,2,2,2],
+            [2,2,2,2,2,2,2,2,5,5,5,6,6,5,5,6,6,5,5,2,2,2],
+            [2,2,2,2,2,2,2,3,5,5,5,4,4,5,5,4,4,5,3,2,2,2],
+            [2,2,2,2,2,2,4,3,5,5,6,6,5,5,6,6,5,5,3,4,2,2,2],
+            [2,2,2,2,2,2,2,3,5,5,5,5,5,5,5,5,5,3,2,2,2,2],
+            [2,2,2,2,2,2,2,2,5,5,3,5,5,5,3,5,5,2,2,2,2,2],
+            [2,2,2,2,2,2,2,2,2,5,5,3,3,3,3,3,5,5,2,2,2,2],
+            [2,2,0,0,0,2,2,2,2,5,5,5,5,5,5,5,5,5,2,2,6,2,2],
+            [2,0,0,0,0,0,2,2,2,2,2,2,4,4,2,2,2,2,2,3,2,2,2],
+            [2,2,2,2,2,2,2,2,2,2,2,2,4,4,2,2,2,2,2,3,2,2,2],
+            [2,2,2,2,2,2,2,2,2,2,2,5,5,5,5,5,2,3,3,3,2,2,2],
+            [2,2,2,2,2,2,2,2,2,3,3,5,5,6,6,5,5,3,3,2,2,2,2],
+            [2,2,2,2,2,2,2,3,3,3,2,5,5,1,1,5,5,2,2,2,2,2,2],
+            [2,2,2,2,2,3,3,3,2,2,2,5,5,1,1,5,5,2,2,2,2,2,2],
+            [2,2,2,2,2,6,2,2,2,2,2,5,5,6,6,5,5,2,2,2,2,2,2],
+            [2,2,2,2,2,2,2,2,2,2,2,5,5,5,5,5,2,2,2,2,2,2,2],
+            [2,6,6,6,2,2,2,2,2,2,4,2,2,4,2,7,7,7,7,1,7,2,6,6,6],
+            [6,6,6,6,6,2,2,2,6,6,4,7,7,4,7,7,7,1,7,7,7,6,6,6],
+            [6,6,6,6,6,6,6,6,7,7,4,7,7,4,7,7,7,7,7,7,7,7,7,7],
+            [6,7,7,6,6,6,6,7,7,1,7,4,7,7,4,7,7,7,7,7,7,7,7,7]
+        ];
+
+        const LEVEL_2_MATRIX = [
+            [1,1,1,1,1,1,1,3,3,3,3,3,3,1,1,1,1,1,1],
+            [1,1,1,1,1,1,3,4,4,4,4,4,4,3,1,1,1,1,1],
+            [1,1,1,1,1,3,4,4,4,4,4,4,4,4,3,1,1,1,1],
+            [1,1,1,1,1,3,4,4,4,4,4,4,4,4,3,1,1,1,1],
+            [1,1,1,1,3,4,4,4,4,3,4,4,4,4,3,1,1,1,1],
+            [1,1,1,1,3,4,4,4,3,0,3,4,4,4,3,3,1,1,1],
+            [1,1,1,1,3,4,4,4,3,0,0,3,4,3,0,3,1,1,1],
+            [1,1,1,1,1,3,4,4,3,0,0,3,3,3,0,3,1,1,1],
+            [1,1,1,1,3,3,4,4,4,3,3,3,4,3,3,1,1,1,1],
+            [1,1,3,2,2,3,4,4,4,4,4,4,4,3,1,1,1,1,1],
+            [1,1,3,2,4,4,2,3,4,4,4,4,4,4,3,3,3,1,1],
+            [1,3,2,4,4,2,4,4,3,3,3,3,3,4,2,2,3,1,1],
+            [3,5,3,4,2,3,2,4,4,4,4,4,2,2,4,4,2,3,1],
+            [3,5,3,3,3,3,4,2,4,2,4,2,4,3,2,4,3,5,3],
+            [3,3,4,4,3,3,4,4,2,2,2,4,4,3,3,3,3,5,3],
+            [3,4,4,4,3,3,2,2,4,2,4,2,2,3,3,4,4,3,3],
+            [3,3,3,3,3,3,4,4,4,4,4,4,4,3,3,4,4,4,3],
+            [1,1,1,1,3,2,2,2,2,2,2,2,2,3,3,3,3,1,1],
+            [1,1,1,1,3,2,2,2,3,3,2,2,2,2,3,1,1,1,1],
+            [1,1,1,1,3,4,4,4,3,1,3,4,4,4,3,1,1,1,1]
+        ];
+
+        let agentNames = "";
+        let agentClass = "3º Ano A";
+        let currentLevel = 1;
+        let currentMatrix = [];
+        let currentPalette = {};
+        let selectedColor = 1;
+        let paintedState = [];
+        let isMouseDown = false;
+
+        function validateRegistration() {
+            const namesInput = document.getElementById('input-names').value.trim();
+            const isValid = namesInput.length >= 2;
+
+            const btn1 = document.getElementById('btn-mission-1');
+            const btn2 = document.getElementById('btn-mission-2');
+
+            if (isValid) {
+                btn1.classList.remove('opacity-60');
+                btn2.classList.remove('opacity-60');
+                btn1.innerHTML = '<i class="fa-solid fa-play"></i> Iniciar Missão 1';
+                btn2.innerHTML = '<i class="fa-solid fa-play"></i> Iniciar Missão 2';
+            } else {
+                btn1.classList.add('opacity-60');
+                btn2.classList.add('opacity-60');
+                btn1.innerHTML = '🔒 Digite os Nomes';
+                btn2.innerHTML = '🔒 Digite os Nomes';
+            }
+            return isValid;
+        }
+
+        function selectLevelCard(levelNum) {
+            if (!validateRegistration()) {
+                document.getElementById('input-names').focus();
+                document.getElementById('input-names').classList.add('border-rose-500');
+                return;
+            }
+
+            agentNames = document.getElementById('input-names').value.trim();
+            const classRadios = document.getElementsByName('class-select');
+            for (let r of classRadios) {
+                if (r.checked) agentClass = r.value;
+            }
+
+            // Update Header Badge
+            document.getElementById('badge-names').textContent = agentNames;
+            document.getElementById('badge-class').textContent = agentClass;
+            document.getElementById('agent-badge').classList.remove('hidden');
+
+            selectLevel(levelNum);
+        }
+
+        function goToMenu() {
+            document.getElementById('menu-view').classList.remove('hidden');
+            document.getElementById('game-view').classList.add('hidden');
+            document.getElementById('game-controls').classList.add('hidden');
+            document.getElementById('victory-modal').classList.add('hidden');
+        }
+
+        function selectLevel(levelNum) {
+            currentLevel = levelNum;
+            document.getElementById('menu-view').classList.add('hidden');
+            document.getElementById('game-view').classList.remove('hidden');
+            document.getElementById('game-controls').classList.remove('hidden');
+
+            if (levelNum === 1) {
+                currentMatrix = LEVEL_1_MATRIX;
+                currentPalette = PALETTES.level1;
+                document.getElementById('level-title').textContent = "Missão 1: Código do Futuro 🤖";
+            } else {
+                currentMatrix = LEVEL_2_MATRIX;
+                currentPalette = PALETTES.level2;
+                document.getElementById('level-title').textContent = "Missão 2: O Herói Secreto 🕷️";
+            }
+
+            selectedColor = 1;
+            initLevelState();
+        }
+
+        function restartCurrentLevel() {
+            document.getElementById('victory-modal').classList.add('hidden');
+            initLevelState();
+        }
+
+        function initLevelState() {
+            const rows = currentMatrix.length;
+            const cols = currentMatrix[0].length;
+
+            paintedState = Array(rows).fill(null).map(() => Array(cols).fill(false));
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (currentMatrix[r][c] === 0) {
+                        paintedState[r][c] = true;
+                    }
+                }
+            }
+
+            renderPalette();
+            renderGrid();
+            updateProgress();
+        }
+
+        function renderPalette() {
+            const container = document.getElementById('palette-container');
+            container.innerHTML = '';
+
+            const colorKeys = Object.keys(currentPalette).filter(k => parseInt(k) !== 0);
+
+            colorKeys.forEach(keyStr => {
+                const colorId = parseInt(keyStr);
+                const colorInfo = currentPalette[colorId];
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `color-badge p-2.5 rounded-2xl flex items-center justify-between gap-3 shadow-md border-2 border-slate-200 transition-all ${colorId === selectedColor ? 'selected ring-4 ring-indigo-400 font-extrabold' : 'opacity-90 hover:opacity-100'}`;
+                btn.style.backgroundColor = colorInfo.hex;
+                btn.style.color = colorInfo.textColor;
+
+                btn.onclick = () => {
+                    selectedColor = colorId;
+                    renderPalette();
+                    playSound('paint');
+                };
+
+                btn.innerHTML = `
+                    <div class="w-8 h-8 rounded-xl bg-black/20 flex items-center justify-center font-bold text-lg text-white shadow-inner">
+                        ${colorId}
+                    </div>
+                    <span class="text-xs font-bold drop-shadow-sm pr-1 hidden lg:inline">${colorInfo.name}</span>
+                `;
+
+                container.appendChild(btn);
+            });
+        }
+
+        function renderGrid() {
+            const gridContainer = document.getElementById('pixel-grid');
+            gridContainer.innerHTML = '';
+
+            const rows = currentMatrix.length;
+            const cols = currentMatrix[0].length;
+
+            gridContainer.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+
+            const maxDimension = Math.min(window.innerWidth * 0.88, window.innerHeight * 0.58);
+            const cellSize = Math.max(12, Math.floor(maxDimension / Math.max(rows, cols)));
+            gridContainer.style.width = `${cols * cellSize}px`;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const targetColorId = currentMatrix[r][c];
+                    const isPainted = paintedState[r][c];
+
+                    const cell = document.createElement('div');
+                    cell.id = `cell-${r}-${c}`;
+                    cell.className = `pixel-cell ${isPainted ? 'painted' : ''}`;
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+
+                    if (isPainted) {
+                        cell.style.backgroundColor = currentPalette[targetColorId].hex;
+                        cell.textContent = '';
+                    } else {
+                        cell.style.backgroundColor = '#ffffff';
+                        cell.textContent = targetColorId;
+                        cell.style.color = '#64748b';
+                    }
+
+                    cell.onmousedown = (e) => {
+                        e.preventDefault();
+                        isMouseDown = true;
+                        paintCell(r, c);
+                    };
+
+                    cell.onmouseenter = () => {
+                        if (isMouseDown) paintCell(r, c);
+                    };
+
+                    gridContainer.appendChild(cell);
+                }
+            }
+        }
+
+        document.addEventListener('mouseup', () => { isMouseDown = false; });
+        document.addEventListener('mouseleave', () => { isMouseDown = false; });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isMouseDown) return;
+            const touch = e.touches[0];
+            const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (elem && elem.dataset && elem.dataset.row !== undefined) {
+                const r = parseInt(elem.dataset.row);
+                const c = parseInt(elem.dataset.col);
+                paintCell(r, c);
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchstart', (e) => {
+            const touch = e.touches[0];
+            const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (elem && elem.dataset && elem.dataset.row !== undefined) {
+                isMouseDown = true;
+                const r = parseInt(elem.dataset.row);
+                const c = parseInt(elem.dataset.col);
+                paintCell(r, c);
+            }
+        }, { passive: true });
+
+        document.addEventListener('touchend', () => { isMouseDown = false; });
+
+        function paintCell(r, c) {
+            if (paintedState[r][c]) return;
+
+            const targetColorId = currentMatrix[r][c];
+            const cellElem = document.getElementById(`cell-${r}-${c}`);
+            if (!cellElem) return;
+
+            if (selectedColor === targetColorId) {
+                paintedState[r][c] = true;
+                cellElem.style.backgroundColor = currentPalette[targetColorId].hex;
+                cellElem.textContent = '';
+                cellElem.classList.add('painted');
+                cellElem.classList.remove('hint-highlight');
+
+                playSound('paint');
+                updateProgress();
+            } else {
+                cellElem.classList.add('error-shake');
+                playSound('error');
+                setTimeout(() => {
+                    cellElem.classList.remove('error-shake');
+                }, 300);
+            }
+        }
+
+        function updateProgress() {
+            const rows = currentMatrix.length;
+            const cols = currentMatrix[0].length;
+            const totalCells = rows * cols;
+            
+            let paintedCount = 0;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (paintedState[r][c]) paintedCount++;
+                }
+            }
+
+            const percentage = Math.floor((paintedCount / totalCells) * 100);
+            document.getElementById('progress-bar').style.width = `${percentage}%`;
+            document.getElementById('progress-text').textContent = `${percentage}%`;
+
+            if (percentage === 100) {
+                setTimeout(showVictory, 300);
+            }
+        }
+
+        function giveHint() {
+            playSound('paint');
+            const rows = currentMatrix.length;
+            const cols = currentMatrix[0].length;
+
+            let unpaintedForSelected = [];
+            let allUnpainted = [];
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (!paintedState[r][c]) {
+                        allUnpainted.push({ r, c });
+                        if (currentMatrix[r][c] === selectedColor) {
+                            unpaintedForSelected.push({ r, c });
+                        }
+                    }
+                }
+            }
+
+            const candidates = unpaintedForSelected.length > 0 ? unpaintedForSelected : allUnpainted;
+            if (candidates.length === 0) return;
+
+            const hintCount = Math.min(3, candidates.length);
+            for (let i = 0; i < hintCount; i++) {
+                const target = candidates[Math.floor(Math.random() * candidates.length)];
+                const cellElem = document.getElementById(`cell-${target.r}-${target.c}`);
+                if (cellElem) {
+                    cellElem.classList.add('hint-highlight');
+                    setTimeout(() => {
+                        cellElem.classList.remove('hint-highlight');
+                    }, 2000);
+                }
+            }
+        }
+
+        function showVictory() {
+            playSound('victory');
+
+            // Populate Certificate
+            document.getElementById('cert-names').textContent = `Dupla: ${agentNames || "Agentes Decodificadores"}`;
+            document.getElementById('cert-class').textContent = `Turma: ${agentClass}`;
+            document.getElementById('cert-revealed-title').textContent = REVEALED_NAMES[currentLevel];
+
+            document.getElementById('victory-modal').classList.remove('hidden');
+
+            if (typeof confetti === 'function') {
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+                setTimeout(() => {
+                    confetti({ particleCount: 60, angle: 60, spread: 55, origin: { x: 0 } });
+                    confetti({ particleCount: 60, angle: 120, spread: 55, origin: { x: 1 } });
+                }, 250);
+            }
+        }
+
+        window.onresize = function() {
+            if (!document.getElementById('game-view').classList.contains('hidden')) {
+                renderGrid();
+            }
+        };
+
+        // Initialize Validation on Load
+        validateRegistration();
+    </script>
+</body>
+</html>
